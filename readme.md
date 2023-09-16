@@ -1,4 +1,4 @@
-# ksuid-tcl
+# bcrypt-tcl
 
 TCL module for bcrypt, a password-hashing function.
 
