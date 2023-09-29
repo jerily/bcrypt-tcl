@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(bcrypt-tcl VERSION 1.0.1 LANGUAGES C)
+project(bcrypt-tcl VERSION 1.0.2 LANGUAGES C)
 
 set(TARGET bcrypt-tcl)
 set(CMAKE_C_STANDARD   11)
@@ -18,7 +18,7 @@ set(CMAKE_C_FLAGS  "-DTCL_THREADS -DVERSION=${PROJECT_VERSION} ${CMAKE_C_FLAGS}"
 enable_testing()
 add_test(NAME AllUnitTests COMMAND tclsh8.6 ${CMAKE_CURRENT_SOURCE_DIR}/tests/all.tcl ${CMAKE_CURRENT_BINARY_DIR})
 
-add_library(bcrypt-tcl MODULE
+add_library(bcrypt-tcl SHARED
         src/library.c
         src/bcrypt/bcrypt.c
         src/bcrypt/crypt_blowfish/crypt_blowfish.c
