@@ -36,13 +36,15 @@ puts match_incorrect_pw=$match_incorrect_pw
 ## Build for TCL
     
 ```bash
-wget https://github.com/jerily/bcrypt-tcl/archive/refs/tags/v1.0.0.tar.gz
-tar -xzf v1.0.0.tar.gz
-cd bcrypt-tcl-1.0.0
+wget https://github.com/jerily/bcrypt-tcl/archive/refs/tags/v1.0.1.tar.gz
+tar -xzf v1.0.1.tar.gz
+cd bcrypt-tcl-1.0.1
 export BCRYPT_TCL_DIR=`pwd`
 mkdir build
 cd build
-cmake ..
+cmake .. \
+  -DTCL_LIBRARY_DIR=/usr/local/lib \
+  -DTCL_INCLUDE_DIR=/usr/local/include
 make
 # IMPORTANT: run the tests to make sure
 # everything is working fine on your system

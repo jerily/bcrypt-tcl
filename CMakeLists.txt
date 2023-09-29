@@ -1,17 +1,22 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(bcrypt-tcl VERSION 1.0.0 LANGUAGES C)
+project(bcrypt-tcl VERSION 1.0.1 LANGUAGES C)
 
 set(TARGET bcrypt-tcl)
 set(CMAKE_C_STANDARD   11)
 set(CMAKE_C_STANDARD_REQUIRED true)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+find_package(TCL EXACT 8.6.13 REQUIRED)  # TCL_INCLUDE_PATH TCL_LIBRARY
+
+message(STATUS "TCL_INCLUDE_PATH: ${TCL_INCLUDE_PATH}")
+message(STATUS "TCL_LIBRARY: ${TCL_LIBRARY}")
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_C_FLAGS  "-DTCL_THREADS -DVERSION=${PROJECT_VERSION} ${CMAKE_C_FLAGS}")
 
 enable_testing()
-add_test(NAME AllUnitTests COMMAND tclsh ${CMAKE_CURRENT_SOURCE_DIR}/tests/all.tcl ${CMAKE_CURRENT_BINARY_DIR})
+add_test(NAME AllUnitTests COMMAND tclsh8.6 ${CMAKE_CURRENT_SOURCE_DIR}/tests/all.tcl ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(bcrypt-tcl MODULE
         src/library.c
@@ -22,10 +27,6 @@ add_library(bcrypt-tcl MODULE
         src/bcrypt/crypt_blowfish/wrapper.c
 )
 set_target_properties(bcrypt-tcl PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-if (NOT TCL_INCLUDE_PATH OR NOT TCL_LIBRARY)
-    include(${CMAKE_CURRENT_LIST_DIR}/FindTCL.cmake)
-endif ()
 
 include_directories(${TCL_INCLUDE_PATH})
 target_link_libraries(bcrypt-tcl PRIVATE ${TCL_LIBRARY})
