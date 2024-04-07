@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(bcrypt-tcl VERSION 1.0.2 LANGUAGES C)
+project(bcrypt-tcl VERSION 2.0.0 LANGUAGES C)
 
 set(TARGET bcrypt-tcl)
 set(CMAKE_C_STANDARD   11)
@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD_REQUIRED true)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-find_package(TCL EXACT 8.6.13 REQUIRED)  # TCL_INCLUDE_PATH TCL_LIBRARY
+find_package(TCL 8.6.13 REQUIRED)  # TCL_INCLUDE_PATH TCL_LIBRARY
 
 message(STATUS "TCL_INCLUDE_PATH: ${TCL_INCLUDE_PATH}")
 message(STATUS "TCL_LIBRARY: ${TCL_LIBRARY}")
@@ -20,11 +20,9 @@ add_test(NAME AllUnitTests COMMAND tclsh8.6 ${CMAKE_CURRENT_SOURCE_DIR}/tests/al
 
 add_library(bcrypt-tcl SHARED
         src/library.c
-        src/bcrypt/bcrypt.c
-        src/bcrypt/crypt_blowfish/crypt_blowfish.c
-        src/bcrypt/crypt_blowfish/x86.S
-        src/bcrypt/crypt_blowfish/crypt_gensalt.c
-        src/bcrypt/crypt_blowfish/wrapper.c
+        src/crypt/arc4random.c
+        src/crypt/bcrypt.c
+        src/crypt/blowfish.c
 )
 set_target_properties(bcrypt-tcl PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

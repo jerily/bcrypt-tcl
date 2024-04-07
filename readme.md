@@ -36,9 +36,9 @@ puts match_incorrect_pw=$match_incorrect_pw
 ## Build for TCL
     
 ```bash
-wget https://github.com/jerily/bcrypt-tcl/archive/refs/tags/v1.0.2.tar.gz
-tar -xzf v1.0.2.tar.gz
-cd bcrypt-tcl-1.0.2
+wget https://github.com/jerily/bcrypt-tcl/archive/refs/tags/v2.0.0.tar.gz
+tar -xzf v2.0.0.tar.gz
+cd bcrypt-tcl-2.0.0
 export BCRYPT_TCL_DIR=`pwd`
 mkdir build
 cd build
