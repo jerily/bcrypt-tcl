@@ -1,35 +1,57 @@
 package require tcltest
-package require bcrypt
-
-namespace import -force ::tcltest::test
-
-::tcltest::configure {*}$argv
-
-test basic-1 {} -body {
-	set salt [::bcrypt::gensalt 12]
-	set hash [::bcrypt::hashpw "testtesttest" $salt]
-	expr { [string length $hash] > 0 }
-} -result {1}
-
-test basic-2 {} -body {
-    set pass "hi,mom";
-	set hash1 {$2a$10$VEVmGHy4F4XQMJ3eOZJAUeb.MedU0W10pTPCuf53eHdKJPiSE8sMK}
-	set hash2 {$2a$10$3F0BVk5t8/aoS.3ddaB3l.fxg5qvafQ9NybxcpXLzMeAt.nVWn.NO}
-
-	set actual_hash1 [::bcrypt::hashpw $pass $hash1]
-	set actual_hash2 [::bcrypt::hashpw $pass $hash2]
-
-    set result [expr { $hash1 eq $actual_hash1 && $hash2 eq $actual_hash2 }]
-} -result {1}
-
-test basic-3 {} -body {
-    set pass "hi,mom";
-	set hash1 {$2a$10$VEVmGHy4F4XQMJ3eOZJAUeb.MedU0W10pTPCuf53eHdKJPiSE8sMK}
-    bcrypt::checkpw $pass $hash1
-} -result {1}
-
-test basic-4 {} -body {
-    set pass "hi,mom";
-	set hash2 {$2a$10$3F0BVk5t8/aoS.3ddaB3l.fxg5qvafQ9NybxcpXLzMeAt.nVWn.NO}
-    bcrypt::checkpw $pass $hash2
-} -result {1}
+package require bcrypt 2.0.1
+namespace import ::tcltest::*
+test bcrypt-1 {known 2a vectors} -body {
+    set out {}
+    foreach hash {{$2a$10$VEVmGHy4F4XQMJ3eOZJAUeb.MedU0W10pTPCuf53eHdKJPiSE8sMK} {$2a$10$3F0BVk5t8/aoS.3ddaB3l.fxg5qvafQ9NybxcpXLzMeAt.nVWn.NO}} {
+        lappend out [expr {[bcrypt::hashpw hi,mom $hash] eq $hash}] [bcrypt::checkpw hi,mom $hash] [bcrypt::checkpw wrong $hash]
+    }
+    set out
+} -result {1 1 0 1 1 0}
+test bcrypt-2 {random salts, default cost, 2b round trip} -body {
+    set a [bcrypt::gensalt 4]
+    set b [bcrypt::gensalt 4]
+    set h [bcrypt::hashpw { leading and trailing spaces } $a]
+    list [regexp {^\$2b\$12\$[./A-Za-z0-9]{22}$} [bcrypt::gensalt]] [expr {$a ne $b}] \
+        [bcrypt::checkpw { leading and trailing spaces } $h] [bcrypt::checkpw {leading and trailing spaces} $h]
+} -result {1 1 1 0}
+test bcrypt-3 {reject invalid costs, malformed/truncated records and trailing bytes} -body {
+    set result {}
+    foreach cost {-1 0 3 32 xyz} {lappend result [catch {bcrypt::gensalt $cost}]}
+    set salt {$2b$04$......................}
+    foreach record [list {} {$} {$2} {$2b$} {$2b$04$} ${salt}x [string replace $salt 4 5 03] [string replace $salt 4 5 32] [string replace $salt 7 7 :]] {
+        lappend result [catch {bcrypt::hashpw test $record}] [bcrypt::checkpw test $record]
+    }
+    expr {[lrange $result 0 4] eq {1 1 1 1 1} && [lrange $result 5 end] eq {1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0}}
+} -result 1
+test bcrypt-4 {reject NULs and passwords beyond bcrypt's 72-byte boundary} -body {
+    set salt {$2b$04$......................}
+    set p [string repeat x 72]
+    set h [bcrypt::hashpw $p $salt]
+    list [bcrypt::checkpw $p $h] [catch {bcrypt::hashpw ${p}x $salt}] [catch {bcrypt::checkpw ${p}x $h}] \
+        [catch {bcrypt::hashpw "abc\x00def" $salt}] [catch {bcrypt::hashpw {} $salt}] \
+        [catch {bcrypt::hashpw [string repeat \u00e9 37] $salt}] [string length [bcrypt::hashpw [string repeat \u00e9 36] $salt]]
+} -result {1 1 1 1 1 1 60}
+test bcrypt-5 {2y is compatible with corrected 2b variant} -body {
+    set b [bcrypt::hashpw example {$2b$04$......................}]
+    set y [string replace $b 2 2 y]
+    list [bcrypt::checkpw example $y] [expr {[bcrypt::hashpw example [string range $y 0 28]] eq $y}]
+} -result {1 1}
+test bcrypt-6 {salt/hash base64 must be canonical} -body {
+    set salt {$2b$04$...................../}
+    list [catch {bcrypt::hashpw example $salt}] [bcrypt::checkpw example ${salt}[string repeat . 31]]
+} -result {1 0}
+test bcrypt-7 {standard UTF-8 and 72-byte interoperability vectors} -body {
+    set results {}
+    foreach item {
+        {70c3a4737377c3b6726420f09f9880 {$2b$04$......................VVE17rAEYdODy9zlUpsD88rBuir8rbG}}
+        {787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878 {$2b$04$......................SZFhVdUK5wGKY4lx/QrgUMHG0XsWjbi}}
+        {c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9c3a9 {$2b$04$......................BIObiDA03HkxYscqxSoA.9NjHlW6H06}}
+    } {
+        lassign $item hex expected
+        set text [encoding convertfrom utf-8 [binary decode hex $hex]]
+        lappend results [expr {[bcrypt::hashpw $text {$2b$04$......................}] eq $expected}] [bcrypt::checkpw $text $expected]
+    }
+    set results
+} -result {1 1 1 1 1 1}
+cleanupTests

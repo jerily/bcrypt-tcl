@@ -40,7 +40,8 @@
 #include <time.h>
 #include "blf.h"
 #include "bcrypt.h"
-#include "arc4random.h"
+#include <openssl/rand.h>
+#include <openssl/crypto.h>
 
 /* This implementation is adaptable to current computing power.
  * You can have up to 2^31 rounds which should be enough for some
@@ -62,24 +63,24 @@ static int decode_base64(u_int8_t *, size_t, const char *);
  * Generates a salt for this version of crypt.
  */
 int
-bcrypt_initsalt(int log_rounds, uint8_t *salt, size_t saltbuflen)
+bcrypt_initsalt(int log_rounds, char *salt, size_t saltbuflen)
 {
 	uint8_t csalt[BCRYPT_MAXSALT];
 
-	if (saltbuflen < BCRYPT_SALTSPACE) {
-//		errno = EINVAL;
+	if (saltbuflen < BCRYPT_SALTSPACE || log_rounds < 4 || log_rounds > 31) {
+		errno = EINVAL;
 		return -1;
 	}
 
-	arc4random_buf(csalt, sizeof(csalt));
+	if (RAND_bytes(csalt, sizeof(csalt)) != 1) {
+		OPENSSL_cleanse(csalt, sizeof(csalt));
+		return -1;
+	}
 
-	if (log_rounds < 4)
-		log_rounds = 4;
-	else if (log_rounds > 31)
-		log_rounds = 31;
 
 	snprintf(salt, saltbuflen, "$2b$%2.2u$", log_rounds);
 	encode_base64(salt + 7, csalt, sizeof(csalt));
+	OPENSSL_cleanse(csalt, sizeof(csalt));
 
 	return 0;
 }
@@ -116,6 +117,7 @@ bcrypt_hashpass(const char *key, const char *salt, char *encrypted,
 	case 'a':
 		key_len = (u_int8_t)(strlen(key) + 1);
 		break;
+	case 'y':
 	case 'b':
 		/* strlen() returns a size_t, but the function calls
 		 * below result in implicit casts to a narrower integer
@@ -187,10 +189,10 @@ bcrypt_hashpass(const char *key, const char *salt, char *encrypted,
 	snprintf(encrypted, 8, "$2%c$%2.2u$", minor, logr);
 	encode_base64(encrypted + 7, csalt, BCRYPT_MAXSALT);
 	encode_base64(encrypted + 7 + 22, ciphertext, 4 * BCRYPT_WORDS - 1);
-	explicit_bzero(&state, sizeof(state));
-	explicit_bzero(ciphertext, sizeof(ciphertext));
-	explicit_bzero(csalt, sizeof(csalt));
-	explicit_bzero(cdata, sizeof(cdata));
+	OPENSSL_cleanse(&state, sizeof(state));
+	OPENSSL_cleanse(ciphertext, sizeof(ciphertext));
+	OPENSSL_cleanse(csalt, sizeof(csalt));
+	OPENSSL_cleanse(cdata, sizeof(cdata));
 	return 0;
 
 inval:
@@ -228,7 +230,7 @@ static int
 decode_base64(u_int8_t *buffer, size_t len, const char *b64data)
 {
 	u_int8_t *bp = buffer;
-	const u_int8_t *p = b64data;
+	const u_int8_t *p = (const u_int8_t *)b64data;
 	u_int8_t c1, c2, c3, c4;
 
 	while (bp < buffer + len) {
@@ -270,7 +272,7 @@ decode_base64(u_int8_t *buffer, size_t len, const char *b64data)
 static int
 encode_base64(char *b64buffer, const u_int8_t *data, size_t len)
 {
-	u_int8_t *bp = b64buffer;
+	u_int8_t *bp = (u_int8_t *)b64buffer;
 	const u_int8_t *p = data;
 	u_int8_t c1, c2;
 
@@ -314,6 +316,6 @@ bcrypt_newhash(const char *pass, int log_rounds, char *hash, size_t hashlen)
     if (bcrypt_hashpass(pass, salt, hash, hashlen) != 0)
         return -1;
 
-    explicit_bzero(salt, sizeof(salt));
+    OPENSSL_cleanse(salt, sizeof(salt));
     return 0;
 }
