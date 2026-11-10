@@ -1,0 +1,51 @@
+{
+  "name": "bcrypt-tcl",
+  "version": "2.0.1",
+  "description": "Bcrypt password hashing and verification for Tcl.",
+  "scripts": {},
+  "dependencies": {
+    "tcl": ">=8.6.14,<10.0.0",
+    "openssl": "^3.0.13"
+  },
+  "devDependencies": {},
+  "build": {
+    "default": [
+      {
+        "cmd": "cd"
+      },
+      {
+        "cmd": "cmake_config",
+        "options": [
+          {
+            "name": "TCL_INCLUDE_DIR",
+            "value": "$INSTALL_DIR/include"
+          },
+          {
+            "name": "TCL_LIBRARY_DIR",
+            "value": "$INSTALL_DIR/lib"
+          },
+          {
+            "name": "OPENSSL_ROOT_DIR",
+            "value": "$INSTALL_DIR"
+          },
+          {
+            "name": "BUILD_SHARED_LIBS",
+            "value": "OFF",
+            "if": "+static"
+          },
+          {
+            "name": "BUILD_TESTING",
+            "value": "OFF"
+          }
+        ]
+      },
+      {
+        "cmd": "cmake_make",
+        "parallel": true
+      },
+      {
+        "cmd": "cmake_install"
+      }
+    ]
+  }
+}
